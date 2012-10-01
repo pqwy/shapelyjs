@@ -4,7 +4,7 @@
 
 ## primitives ##
 
-error = (@irritant, @desc = '?') ->
+error = (@irritant, @desc) ->
   @path = []
   undefined
 
@@ -12,7 +12,7 @@ error::toString = ->
   ctx = "\n  at: .#{@path.join '.'}"
   "Reshape error:
 #{@path.length and ctx or ''}
-\n  expected: < #{@desc} >
+\n  expected: < #{@desc ? '?'} >
 \n  irritant: < #{@irritant} >"
 
 fail = (has, desc) -> throw new error has, desc
@@ -32,11 +32,9 @@ at = (path_component, fun) ->
   annotate.call @, fun, (e) -> e.path.unshift path_component
 
 ensure = (desc, fun) ->
-  fun or= opt ; desc or= "<function: #{fun}>"
   (x) -> fun.call(@, x) ? fail x, desc
 
 satisfy = (desc, fun) ->
-  fun or= opt ; desc or= "<predicate: #{fun}>"
   (x) -> (fun.call(@, x) or fail x, desc) and x
 
 prim = { error, fail, recover, annotate, at, ensure, satisfy }
@@ -44,83 +42,89 @@ prim = { error, fail, recover, annotate, at, ensure, satisfy }
 
 ## predicates ##
 
-proto = (p) ->
-  satisfy "proto: #{p}", (x) -> Object.getPrototypeOf(x) is p
+p =
 
-ctor = (c) ->
-  satisfy "ctor: #{c}", (x) -> x.constructor is c
+  proto: (p) ->
+    satisfy "proto: #{p}", (x) ->
+      Object.getPrototypeOf(x) is p
 
-defined = satisfy "defined value", (x) -> x?
+  ctor: (c) ->
+    satisfy "ctor: #{c}", (x) ->
+      x.constructor is c
 
-p = { proto, ctor, defined }
+  defined: satisfy("defined value", (x) -> x?)
 
 [ 'array', 'object', 'function', 'string'
 , 'number', 'boolean', 'date', 'regex'
 ] .forEach (rep) -> p[rep] = satisfy rep, type[rep]
 
+
 ## combinators ##
 
-arrayOf = (test) ->
-  test = shapely test
-  (arr) ->
-    p.array arr
-    arr.map (e, i) => at i, => test.call @, e
+k =
 
-any = (tests...) ->
-  [ pre, last ] = splitLast tests.map shapely
-  (x) -> escape (esc) =>
-    desc = []
-    for test in pre
-      recover (=> esc test.call @, x), (e) -> desc.push e.desc
-    annotate (=> last.call @, x), (e) ->
-      desc.push e.desc ; e.desc = desc
+  arrayOf: (test) ->
+    test = shapely test
+    (arr) ->
+      p.array arr
+      arr.map (e, i) => at i, => test.call @, e
 
-all = (tests...) ->
-  [ pre, last ] = splitLast tests.map shapely
-  (x) ->
-    ( test.call @, x ) for test in pre
-    last.call @, x
+  any: (tests...) ->
+    [ pre, last ] = splitLast tests.map shapely
+    (x) -> escape (esc) =>
+      desc = []
+      for test in pre
+        recover (=> esc test.call @, x), (e) -> desc.push e.desc
+      annotate (=> last.call @, x), (e) ->
+        desc.push e.desc ; e.desc = desc
 
-opt = (test) ->
-  test = shapely test
-  (x) -> recover => test.call @, x
+  all: (tests...) ->
+    [ pre, last ] = splitLast tests.map shapely
+    (x) ->
+      ( test.call @, x ) for test in pre
+      last.call @, x
 
-ctx = (ctx, test) -> (x) -> test.call ctx, x
+  opt: (test) ->
+    test = shapely test
+    (x) -> recover => test.call @, x
 
-k = { arrayOf, any, all, opt, ctx }
+  ctx: (ctx, test) -> (x) -> test.call ctx, x
 
 
 ## literals ##
+
+lit =
+
+  array: (arr_t) ->
+    arr_t = arr_t.map shapely
+    (arr) ->
+      p.array arr
+      arr_t.map (test, i) => at i, => test.call @, arr[i]
+
+  object: (obj_t) ->
+    obj_t = omap obj_t, shapely
+    (obj) ->
+      p.object obj
+      omap obj_t, (test, key) => at key, => test.call @, obj[key]
+
+  regex: (re) ->
+    check = ensure re, (x) -> ( x.match(re) || [] )[0]
+    (str) -> p.string str ; check str
+
+  atom: (atom) ->
+    satisfy atom, (x) -> x is atom
+
 
 shapely = (test) ->
 
   if type.function test then test
   else if type.array test
-    shapely_array test
+    lit.array test
   else if type.regex test
-    shapely_regex test
+    lit.regex test
   else if type.object test
-    shapely_object test
-  else shapely_prim test
-
-shapely_array = (test_a) ->
-  test_a = test_a.map shapely
-  (arr) ->
-    p.array arr
-    test_a.map (test, i) => at i, => test.call @, arr[i]
-
-shapely_object = (test_o) ->
-  test_o = omap test_o, shapely
-  (obj) ->
-    p.object obj
-    omap test_o, (test, key) => at key, => test.call @, obj[key]
-
-shapely_regex = (test_re) ->
-  check = ensure test_re, (x) -> ( x.match(test_re) || [] )[0]
-  (str) -> p.string str ; check str
-
-shapely_prim = (test_p) ->
-  satisfy test_p, (x) -> x is test_p
+    lit.object test
+  else lit.atom test
 
 
 

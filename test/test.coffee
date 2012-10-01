@@ -1,5 +1,5 @@
 
-{ prim, p, k, shapely } = require '../lib/index'
+{ prim, p, k, shapely, sat, ens } = require '../lib/index'
 
 
 assert = require 'assert'
@@ -19,9 +19,9 @@ describe 'primitives', ->
 
   describe '#satisfy', ->
 
-    v1 = prim.satisfy "x > 33", (x) -> x > 33
-    v2 = prim.satisfy "has .desu", ({ desu }) -> desu
-    v3 = prim.satisfy "falsy", -> 0
+    v1 = sat "x > 33", (x) -> x > 33
+    v2 = sat "has .desu", ({ desu }) -> desu
+    v3 = sat "falsy", -> 0
 
     it 'should leave valid values intact on true', ->
       ok v1, 34
@@ -34,8 +34,8 @@ describe 'primitives', ->
 
   describe '#ensure', ->
 
-    v1 = prim.ensure "pluck .xyz", (obj) -> obj?.xyz
-    v2 = prim.ensure "is 7", (x) -> if x == 7 then 'poo'
+    v1 = ens "pluck .xyz", (obj) -> obj?.xyz
+    v2 = ens "is 7", (x) -> if x == 7 then 'poo'
 
     it 'should accept new value when returning defined', ->
       ok v1, { abc: 123, xyz: 777 }, 777
@@ -259,8 +259,8 @@ describe 'combinators', ->
 
     it 'should be nasty', ->
 
-      gt = prim.satisfy '> 1', (x) -> x > 1
-      lt = prim.satisfy '< 3', (x) -> x < 3
+      gt = sat '> 1', (x) -> x > 1
+      lt = sat '< 3', (x) -> x < 3
       v  = k.all gt, lt
 
       ok v, 2
@@ -282,9 +282,9 @@ describe 'combinators', ->
 
 describe 'context preservation', ->
 
-  yes1 = prim.satisfy 'any' , (x) -> @push x ; true
-  yes2 = prim.ensure  'any' , (x) -> @push x ; x
-  nope = prim.satisfy 'none', (x) -> @push x ; false
+  yes1 = sat 'any' , (x) -> @push x ; true
+  yes2 = ens 'any' , (x) -> @push x ; x
+  nope = sat 'none', (x) -> @push x ; false
 
   tracing = (final_trace, block) ->
 
