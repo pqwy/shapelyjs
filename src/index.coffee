@@ -78,7 +78,11 @@ arrayOf = (test) ->
 any = (tests...) ->
   [ pre, last ] = splitLast tests.map shapely
   (x) -> escape (esc) ->
-    ( recover -> esc test x ) for test in pre ; last x
+    desc = []
+    for test in pre
+      recover (-> esc test x), (e) -> desc.push e.desc
+    annotate (-> last x), (e) ->
+      desc.push e.desc ; e.desc = desc
 
 all = (tests...) ->
   [ pre, last ] = splitLast tests.map shapely
