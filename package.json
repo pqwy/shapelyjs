@@ -1,0 +1,25 @@
+{
+  "name": "shapely",
+  "version": "0.0.1",
+  "description": "a simple combinator-style validation + transformation library",
+  "main": "lib/index.js",
+  "scripts": {
+    "install": "coffee -c -o lib/ src/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:pqwy/shapelyjs.git"
+  },
+  "keywords": [
+    "transform",
+    "validate",
+    "json",
+    "combinators"
+  ],
+  "author": "pqwy <david@laze.rs>",
+  "license": "MIT",
+  "dependencies": {
+    "coffee-script": "~1.3.3"
+  }
+}
