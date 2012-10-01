@@ -52,27 +52,18 @@ ctor = (c) ->
 
 defined = satisfy "defined value", (x) -> x?
 
-array   = satisfy 'array'    , type.array
-object  = satisfy 'object'   , type.object
-fun     = satisfy 'function' , type.function
-string  = satisfy 'string'   , type.string
-number  = satisfy 'number'   , type.number
-boolean = satisfy 'boolean'  , type.boolean
-date    = satisfy 'date'     , type.date
-regex   = satisfy 'regex'    , type.regex
+p = { proto, ctor, defined }
 
-p = {
-  proto, ctor, defined
-  array, object, function: fun, string, number, boolean, date, regex
-}
-
+[ 'array', 'object', 'function', 'string'
+, 'number', 'boolean', 'date', 'regex'
+] .forEach (rep) -> p[rep] = satisfy rep, type[rep]
 
 ## combinators ##
 
 arrayOf = (test) ->
   test = shapely test
   (arr) ->
-    array arr
+    p.array arr
     arr.map (e, i) => at i, => test.call @, e
 
 any = (tests...) ->
@@ -115,23 +106,26 @@ shapely = (test) ->
 shapely_array = (test_a) ->
   test_a = test_a.map shapely
   (arr) ->
-    array arr
+    p.array arr
     test_a.map (test, i) => at i, => test.call @, arr[i]
 
 shapely_object = (test_o) ->
   test_o = omap test_o, shapely
   (obj) ->
-    object obj
+    p.object obj
     omap test_o, (test, key) => at key, => test.call @, obj[key]
 
 shapely_regex = (test_re) ->
   check = ensure test_re, (x) -> ( x.match(test_re) || [] )[0]
-  (str) -> string str ; check str
+  (str) -> p.string str ; check str
 
 shapely_prim = (test_p) ->
   satisfy test_p, (x) -> x is test_p
 
 
 
-module.exports = { shapely, prim, p, k }
+module.exports = {
+  shapely, prim, p, k
+, sat: prim.satisfy, ens: prim.ensure
+}
 
