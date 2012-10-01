@@ -18,7 +18,7 @@ exports.escape = (f) ->
   catch e
     if e is sentinel then res else throw e
 
-typeof_ = (typerep) -> (x) -> typeofx is typerep
+typeof_ = (typerep) -> (x) -> typeof x is typerep
 
 exports.type =
   array  : Array.isArray

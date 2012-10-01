@@ -39,7 +39,7 @@ satisfy = (desc, fun) ->
   fun or= opt ; desc or= "<predicate: #{fun}>"
   (x) -> (fun(x) or fail x, desc) and x
 
-prim = { fail, recover, annotate, at, ensure, satisfy }
+prim = { error, fail, recover, annotate, at, ensure, satisfy }
 
 
 ## predicates ##
@@ -66,6 +66,7 @@ p = {
   array, object, function: fun, string, number, boolean, date, regex
 }
 
+
 ## combinators ##
 
 arrayOf = (test) ->
@@ -88,6 +89,7 @@ opt = (test) ->
   (x) -> recover -> test x
 
 k = { arrayOf, any, all, opt }
+
 
 ## literals ##
 
@@ -119,7 +121,8 @@ shapely_regex = (test_re) ->
   (str) -> string str ; check str
 
 shapely_prim = (test_p) ->
-  satisfy test_p, ((x) -> x is test_p)
+  satisfy test_p, (x) -> x is test_p
+
 
 
 module.exports = { shapely, prim, p, k }
