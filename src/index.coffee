@@ -18,26 +18,26 @@ error::toString = ->
 fail = (has, desc) -> throw new error has, desc
 
 recover = (fun, handle = ->) ->
-  try fun() catch e
+  try fun.call @ catch e
     if e.constructor is error
-      handle e
+      handle.call @, e
     else throw e
 
 annotate = (fun, emap) ->
-  try fun() catch e
-    emap e if e.constructor is error
+  try fun.call @ catch e
+    emap.call @, e if e.constructor is error
     throw e
 
 at = (path_component, fun) ->
-  annotate fun, (e) -> e.path.unshift path_component
+  annotate.call @, fun, (e) -> e.path.unshift path_component
 
 ensure = (desc, fun) ->
   fun or= opt ; desc or= "<function: #{fun}>"
-  (x) -> fun(x) ? fail x, desc
+  (x) -> fun.call(@, x) ? fail x, desc
 
 satisfy = (desc, fun) ->
   fun or= opt ; desc or= "<predicate: #{fun}>"
-  (x) -> (fun(x) or fail x, desc) and x
+  (x) -> (fun.call(@, x) or fail x, desc) and x
 
 prim = { error, fail, recover, annotate, at, ensure, satisfy }
 
@@ -73,26 +73,30 @@ arrayOf = (test) ->
   test = shapely test
   (arr) ->
     array arr
-    arr.map (e, i) -> at i, -> test e
+    arr.map (e, i) => at i, => test.call @, e
 
 any = (tests...) ->
   [ pre, last ] = splitLast tests.map shapely
-  (x) -> escape (esc) ->
+  (x) -> escape (esc) =>
     desc = []
     for test in pre
-      recover (-> esc test x), (e) -> desc.push e.desc
-    annotate (-> last x), (e) ->
+      recover (=> esc test.call @, x), (e) -> desc.push e.desc
+    annotate (=> last.call @, x), (e) ->
       desc.push e.desc ; e.desc = desc
 
 all = (tests...) ->
   [ pre, last ] = splitLast tests.map shapely
-  (x) -> ( test x ) for test in pre ; last x
+  (x) ->
+    ( test.call @, x ) for test in pre
+    last.call @, x
 
 opt = (test) ->
   test = shapely test
-  (x) -> recover -> test x
+  (x) -> recover => test.call @, x
 
-k = { arrayOf, any, all, opt }
+ctx = (ctx, test) -> (x) -> test.call ctx, x
+
+k = { arrayOf, any, all, opt, ctx }
 
 
 ## literals ##
@@ -112,13 +116,13 @@ shapely_array = (test_a) ->
   test_a = test_a.map shapely
   (arr) ->
     array arr
-    test_a.map (test, i) -> at i, -> test arr[i]
+    test_a.map (test, i) => at i, => test.call @, arr[i]
 
 shapely_object = (test_o) ->
   test_o = omap test_o, shapely
   (obj) ->
     object obj
-    omap test_o, (test, key) -> at key, -> test obj[key]
+    omap test_o, (test, key) => at key, => test.call @, obj[key]
 
 shapely_regex = (test_re) ->
   check = ensure test_re, (x) -> ( x.match(test_re) || [] )[0]

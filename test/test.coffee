@@ -279,6 +279,64 @@ describe 'combinators', ->
 
       nok v, ['x', 'k', 'y']
 
+
+describe 'context preservation', ->
+
+  yes1 = prim.satisfy 'any' , (x) -> @push x ; true
+  yes2 = prim.ensure  'any' , (x) -> @push x ; x
+  nope = prim.satisfy 'none', (x) -> @push x ; false
+
+  tracing = (final_trace, block) ->
+
+    trace = []
+    block.call trace
+    assert.deepEqual trace, final_trace
+
+  it 'persists at low level', ->
+
+    tracing ['x', 'y'], ->
+      yes1.call @, 'x'
+      yes2.call @, 'y'
+
+  it 'persists at literal level', ->
+
+    tracing [3, 2, 1, 11, 12], ->
+
+      v1 = shapely [yes1, yes2, yes1]
+      v2 = shapely a: yes1, b: yes2
+
+      v1.call @, [3, 2, 1]
+      v2.call @, a: 11, b: 12
+
+  it 'persists across arrays', ->
+
+    tracing [1, 2, 3], ->
+
+      ( k.arrayOf yes1 ).call @, [1, 2, 3]
+
+  it 'persists across combinators', ->
+
+    tracing ['a', 'a', 'a', 'a', 'a', 'a'], ->
+
+      v1 = k.all yes1, yes2, yes1
+      v2 = k.any nope, nope, yes1, yes2
+      v3 = k.opt k.all v1, v2
+
+      v3.call @, 'a'
+
+  it 'is settable', ->
+
+    trace = []
+
+    v1 = k.all (k.any nope, yes1), yes2
+    v2 = shapely
+      a: v1
+      b: k.ctx trace, v1
+
+    v2.call [], a: 1, b: 2
+    assert.deepEqual trace, [2, 2, 2]
+
+
 describe 'complex cases', ->
 
   { any, all, opt, arrayOf } = k
